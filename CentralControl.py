@@ -1,4 +1,5 @@
 
+import math
 import socket
 import threading
 import serial
@@ -7,9 +8,6 @@ import time
 import lgpio
 from MotorDriver import MotorDriver
 from ServoDriver import ServoDriver
-
-
-Steer_to_angles = [0, 45, 90]
 
 class CentralControl:
     def __init__(self, udp_port = 5005):
@@ -23,10 +21,24 @@ class CentralControl:
         # Command storage
         self.velocity = 0.0
         self.steering = 0.0
+        self.max_expected_speed = 0.0
+        self.calibrated = 0
         self.lock = threading.Lock()
 
+        # # Calibrating max speed
+        # while(self.calibrated == 0):
+        #     print("CALIBRATING MAX SPEED...")
+        #     data, addr = self.sock.recvfrom(1024)
+        #     vel, steer = struct.unpack('ff', data)
+        #     if(steer == float(999)):
+        #         self.max_expected_speed = vel
+        #         self.calibrated = 1
+        #         print("MAX SPEED: ", self.max_expected_speed)
+        #     time.sleep(1)
+        self.max_expected_speed = 30
+
         #starting drivers
-        self.Motor = MotorDriver()
+        self.Motor = MotorDriver(self.max_expected_speed)
         self.Servo = ServoDriver()
 
         # Start receiver thread
@@ -47,8 +59,12 @@ class CentralControl:
                 # Expecting two floats: velocity, steering
                 vel, steer = struct.unpack('ff', data)
                 with self.lock:
-                    self.velocity = max(min(vel,10.0),0.0)
-                    self.steering = max(min(steer,1.0),0.0)
+                    if(vel != self.velocity or (steer != self.steering)):
+                        #print("Speed: ", vel, ", Steering: ",math.degrees(steer))
+                        pass
+
+                    self.velocity = vel
+                    self.steering = steer
 
             except Exception as e:
                 print("UDP receive error:", e)
@@ -59,7 +75,7 @@ class CentralControl:
                 vel = self.velocity
                 steer = self.steering
             try:
-                self.Motor.send_formatted_speed(int(vel))
+                self.Motor.send_speed(vel)
                 self.Servo.pivot(steer)
 
             except Exception as e:
@@ -67,7 +83,7 @@ class CentralControl:
             time.sleep(0.2)  # Hz update
 
     def stop(self):
-        self.Motor.send_formatted_speed(0)
+        self.Motor.send_speed_by_index(0)
         time.sleep(0.5)
         self.Motor.shutdown_engine()
         self.Servo.pivot(0)

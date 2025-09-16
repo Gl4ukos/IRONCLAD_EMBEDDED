@@ -28,7 +28,6 @@ class ServoDriver:
     # expects radians
     def pivot(self, angle):
         steering = self.translate_steering(angle)
-        print("Pivoting: ", steering)
         self.kit.servo[self.servo_channel].angle = steering
         
 

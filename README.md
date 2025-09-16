@@ -4,10 +4,12 @@ This network blocks all git push/pull requests from port 22 (the default port)
 To use github effectively do:
 
 -> Generate ssh key
+
 -> Add ssh public key to github & private key to agent <ssh-add ~/.ssh/id_rsa>
 
 
 -> Suppose new port: 443
+
 -> Check connection from new port, type in terminal:  
 ssh -T -p 443 git@ssh.github.com
 

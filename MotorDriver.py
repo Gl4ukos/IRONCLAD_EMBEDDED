@@ -3,7 +3,7 @@ import time
 
 
 class MotorDriver:
-    def __init__(self):
+    def __init__(self, max_expected_speed):
         self.DEV_ADDR = 0x32
         self.DUTY_REG_ADDR = 0x0006
         self.FREQ_REG_ADDR = 0x0007
@@ -11,6 +11,7 @@ class MotorDriver:
 
         self.PWM_freq_factor = 4
 
+        self.max_expected_speed = max_expected_speed
         self.inv_speed_incremental = 1/25
         self.speed_values = [
             0,
@@ -32,6 +33,7 @@ class MotorDriver:
         
         self.write_register( self.FREQ_REG_ADDR, self.PWM_freq_factor) #setting PWM frequency
         print("->>> SETTING UP DRIVER REGISTERS...")
+
         time.sleep(0.5)
         self.write_register( self.DUTY_REG_ADDR, 0) # setting Duty to 0 (speed)
         time.sleep(0.5)
@@ -63,14 +65,21 @@ class MotorDriver:
         frame.extend(value.to_bytes(2, 'big'))
         crc = self.calc_crc(frame)
         frame.extend(crc)
-        print("Sending value:", value)
         self.ser.write(frame)
 
-    def send_speed(self, speed):
-        speed_index = (int(speed * self.inv_speed_incremental))
-        self.write_register( self.DUTY_REG_ADDR, self.speed_values[speed_index])
+    # assuming min speed: 0.0
+    def normalize_speed(self, val):
+        clipped = max(min(val,self.max_expected_speed),0.0)
+        return (clipped * self.speed_values[-1]) / self.max_expected_speed
+        
+    def send_speed(self, speed:float):
+        normalized = self.normalize_speed(speed)
+        print("sent speed: ", speed, "-> ",normalized)
+        self.write_register(self.DUTY_REG_ADDR, round(normalized))
 
-    def send_formatted_speed(self, speed_index:int):
+
+    def send_speed_by_index(self, speed_index:int):
+        #print("sent speed: ", self.speed_values[speed_index])
         self.write_register(self.DUTY_REG_ADDR, self.speed_values[speed_index])
     
     def shutdown_engine(self):
@@ -86,23 +95,23 @@ class MotorDriver:
         print("->>> CONNECTION TERMINATED")
 
 if __name__ == "__main__":
-    driver = MotorDriver()
+    driver = MotorDriver(30)
 
     time.sleep(1)
 
-    driver.send_formatted_speed(1)
+    driver.send_speed(5)
 
     time.sleep(3)
 
-    driver.send_formatted_speed(9)
+    driver.send_speed(8)
 
     time.sleep(3)
 
-    driver.send_formatted_speed(3)
+    driver.send_speed(15)
 
     time.sleep(2)
 
-    driver.send_formatted_speed(0)
+    driver.send_speed(0)
 
     driver.shutdown_engine()
     driver.terminate_serial_connection()
