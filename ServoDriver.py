@@ -1,23 +1,36 @@
-from gpiozero import Servo, LED
+from gpiozero import Servo, LED, AngularServo
 from time import sleep
+from adafruit_servokit import ServoKit
+import board
+import busio
+import math
 
 
 class ServoDriver:        
     
     def __init__(self):
-        self.SERVO_PIN = 18  # GPIO pin connected to the servo signal wire
-        self.servo = Servo(self.SERVO_PIN)  # uses default min_pulse_width=1ms, max_pulse_width=2ms
+        self.i2c = busio.I2C(board.SCL, board.SDA)
+        self.kit = ServoKit(channels=16, i2c=self.i2c, address=0x41)
+        self.servo_channel = 1
+        self.physical_servo_offset = -0.2 #the servo is not excactly centered
+        self.default_steering = 90 + math.degrees(self.physical_servo_offset) #degrees
+        self.max_steer = self.default_steering + 40 #degrees
+        self.min_steer = self.default_steering - 40 #degrees
 
-    def move(self, angle):        
-        self.servo.value = -1  # full left
-        sleep(1)
-        self.servo.value = 0   # center
-        sleep(1)
-        self.servo.value = 1   # full right
-        sleep(1)
-    
+    def clip_steering(self, val):
+        return max(min(self.max_steer, val), self.min_steer)
+
+    # expects steering in radians
+    def translate_steering(self, val):
+        return self.clip_steering(self.default_steering + math.degrees(val))
+
+
+    # expects radians
     def pivot(self, angle):
-        self.servo.value = angle
+        steering = self.translate_steering(angle)
+        print("Pivoting: ", steering)
+        self.kit.servo[self.servo_channel].angle = steering
+        
 
 if __name__ == "__main__":
     sc = ServoDriver()
