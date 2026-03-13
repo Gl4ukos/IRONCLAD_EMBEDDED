@@ -1,7 +1,8 @@
-Rpi is connected to "forth public access".
-This network blocks all git push/pull requests from port 22 (the default port)
+This is the code embedded in the Raspberry Pi 5 board of Ironclad. It connects to a network and receives, and then executes, control commands given from an external source.
 
-To use github effectively do:
+Warning: Rpi is connected to "forth public access". This network blocks all git push/pull requests from port 22 (the default port)
+
+To use github from Pi effectively, do:
 
 -> Generate ssh key
 
